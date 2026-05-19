@@ -4,6 +4,8 @@ A single-file HTML visual layout editor for designing desktop-style (EXE) applic
 
 Open `exe-layout-editor.html` directly in any modern browser — no build step, no server, no dependencies.
 
+![EXE UI Layout Editor screenshot](./exe-layout-editor.png)
+
 ## Features
 
 ### Canvas
