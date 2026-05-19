@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>EXE UI Layout Editor</title>
+<style>
+/* ===== Design Tokens (from DESIGN.md — Revolut system, light-mode mapping) ===== */
+:root {
+  /* Brand accent */
+  --primary: #494fdf;
+  --primary-bright: #4f55f1;
+  --primary-deep: #3a40c4;
+
+  /* Text */
+  --ink: #191c1f;
+  --body: #1f2226;
+  --charcoal: #3a3d40;
+  --mute: #505a63;
+  --ash: #5c5e60;
+  --stone: #8d969e;
+  --faint: #c9c9cd;
+
+  /* Surface */
+  --canvas-light: #ffffff;
+  --surface-soft: #f4f4f4;
+  --surface-card: #ffffff;
+  --hairline-light: #e2e2e7;
+  --hairline-strong: #191c1f;
+
+  /* Semantic */
+  --accent-danger: #e23b4a;
+  --accent-teal: #00a87e;
+  --accent-pink: #e61e49;
+  --accent-warning: #ec7e00;
+  --link: #376cd5;
+
+  /* Canvas grid */
+  --grid-color: rgba(0, 0, 0, 0.06);
+
+  /* Component selection */
+  --component-selected: #494fdf;
+
+  /* Structural */
+  --panel-width-left: 210px;
+  --panel-width-right: 270px;
+  --toolbar-height: 52px;
+  --titlebar-height: 32px;
+
+  /* Rounded tokens */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 20px;
+  --r-full: 9999px;
+}
+
+/* ===== Reset ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; overflow: hidden;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 13px; font-weight: 400;
+  color: var(--ink); background: var(--surface-soft);
+  -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--faint); border-radius: var(--r-full); }
+input, select, textarea, button { font-family: inherit; font-size: inherit; color: inherit; outline: none; }
+input[type="text"], input[type="number"], textarea, select {
+  background: var(--canvas-light); border: 1px solid var(--hairline-light);
+  border-radius: var(--r-md); padding: 8px 12px; color: var(--ink); width: 100%;
+  transition: border-color 0.15s;
+}
+input[type="text"]:focus, input[type="number"]:focus, textarea:focus, select:focus {
+  border-color: var(--primary);
+}
+input[type="number"] { width: 80px; }
+select option { background: var(--canvas-light); color: var(--ink); }
+
+/* ===== Layout ===== */
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+/* Toolbar */
+.toolbar {
+  height: var(--toolbar-height); display: flex; align-items: center;
+  padding: 0 20px; background: var(--canvas-light);
+  border-bottom: 1px solid var(--hairline-light); gap: 10px; flex-shrink: 0;
+}
+.toolbar-title {
+  font-weight: 600; font-size: 14px; color: var(--primary);
+  margin-right: 20px; letter-spacing: -0.2px;
+}
+.toolbar-btn {
+  padding: 8px 18px; border-radius: var(--r-full);
+  border: 1px solid var(--hairline-light); background: var(--canvas-light);
+  color: var(--ink); cursor: pointer; font-weight: 600; font-size: 13px;
+  display: flex; align-items: center; gap: 6px; transition: all 0.15s;
+}
+.toolbar-btn:hover { background: var(--surface-soft); border-color: var(--stone); }
+.toolbar-btn.primary {
+  background: var(--primary); color: #ffffff; border-color: var(--primary);
+}
+.toolbar-btn.primary:hover { background: var(--primary-bright); border-color: var(--primary-bright); }
+.toolbar-btn.danger:hover { background: var(--accent-danger); color: #fff; border-color: var(--accent-danger); }
+.toolbar-spacer { flex: 1; }
+
+/* Main Area */
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* ===== Left Panel ===== */
+.panel-left {
+  width: var(--panel-width-left); min-width: var(--panel-width-left);
+  background: var(--canvas-light); border-right: 1px solid var(--hairline-light);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.panel-section-title {
+  padding: 14px 16px 8px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+  color: var(--mute); letter-spacing: 0.8px;
+}
+.component-list { flex: 1; overflow-y: auto; padding: 6px 10px; }
+.component-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 6px;
+  border-radius: var(--r-sm); border: 1px solid var(--hairline-light); cursor: grab;
+  background: var(--canvas-light); transition: all 0.15s; user-select: none;
+}
+.component-item:hover {
+  border-color: var(--primary); background: #f8f8ff;
+  box-shadow: 0 0 0 1px rgba(73, 79, 223, 0.08);
+}
+.component-item:active { cursor: grabbing; background: var(--surface-soft); }
+.component-item.dragging { opacity: 0.35; }
+.comp-icon {
+  width: 36px; height: 28px; border-radius: 6px; display: flex; align-items: center;
+  justify-content: center; font-size: 10px; font-weight: 600; flex-shrink: 0;
+  color: #fff;
+}
+.comp-icon.btn-icon { background: var(--accent-teal); }
+.comp-icon.label-icon { background: var(--primary); }
+.comp-icon.input-icon { background: var(--charcoal); }
+.comp-icon.textarea-icon { background: var(--charcoal); }
+.comp-icon.select-icon { background: var(--accent-warning); }
+.comp-icon.listbox-icon { background: var(--accent-warning); }
+.comp-icon.image-icon { background: var(--accent-teal); }
+.comp-name { font-size: 13px; font-weight: 500; color: var(--body); }
+
+/* ===== Canvas Area ===== */
+.canvas-area {
+  flex: 1; background: var(--surface-soft); overflow: auto; display: flex;
+  align-items: center; justify-content: center; position: relative;
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+#statusZoom:hover { color: var(--primary); }
+
+/* Simulated Window */
+.sim-window {
+  position: relative; background: var(--canvas-light);
+  border: 1px solid var(--hairline-light); border-radius: var(--r-lg);
+  overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  flex-shrink: 0;
+}
+.sim-titlebar {
+  height: var(--titlebar-height); background: var(--hairline-strong);
+  display: flex; align-items: center; padding: 0 12px; user-select: none;
+}
+.sim-titlebar-icon {
+  width: 14px; height: 14px; border-radius: 4px;
+  background: var(--primary); margin-right: 10px; opacity: 0.85;
+}
+.sim-titlebar-text {
+  flex: 1; font-size: 12px; font-weight: 500; color: #ffffff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sim-titlebar-btns { display: flex; gap: 7px; }
+.sim-titlebar-btn { width: 12px; height: 12px; border-radius: 50%; border: none; cursor: default; }
+.sim-titlebar-btn.minimize { background: #f9e2af; }
+.sim-titlebar-btn.maximize { background: #a6e3a1; }
+.sim-titlebar-btn.close { background: #f38ba8; }
+.sim-window-body {
+  position: relative; width: 100%; height: calc(100% - var(--titlebar-height));
+  background: #f8f8f8; overflow: hidden;
+}
+
+/* Drop highlight */
+.sim-window-body.drag-over {
+  background: #f0f0ff; outline: 2px dashed var(--primary); outline-offset: -2px;
+}
+
+/* ===== Rendered Components inside Window ===== */
+.placed-comp {
+  position: absolute; cursor: move; user-select: none;
+  border: 1px solid transparent; transition: border-color 0.1s;
+}
+.placed-comp:hover { border-color: rgba(0, 0, 0, 0.12); }
+.placed-comp.selected {
+  border-color: var(--component-selected) !important;
+  outline: 2px solid var(--component-selected);
+  outline-offset: 1px;
+  z-index: 10;
+  border-radius: 2px;
+}
+
+/* Component visual styles */
+.comp-render-btn {
+  background: linear-gradient(180deg, #fafafa 0%, #e8e8e8 100%);
+  border: 1px solid #c8c8c8; border-radius: 6px;
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--body); font-weight: 500;
+}
+.comp-render-label {
+  width: 100%; height: 100%; display: flex; align-items: center;
+  font-size: 13px; color: var(--body); padding: 2px;
+}
+.comp-render-input {
+  width: 100%; height: 100%; background: #fff; border: 1px solid #c8c8c8;
+  border-radius: 4px; padding: 2px 8px; font-size: 12px; color: #333; pointer-events: none;
+}
+.comp-render-textarea {
+  width: 100%; height: 100%; background: #fff; border: 1px solid #c8c8c8;
+  border-radius: 4px; padding: 6px 8px; font-size: 12px; color: #333; resize: none; pointer-events: none;
+}
+.comp-render-select {
+  width: 100%; height: 100%; background: #fff; border: 1px solid #c8c8c8;
+  border-radius: 4px; padding: 2px 8px; font-size: 12px; color: #333; pointer-events: none;
+  appearance: auto;
+}
+.comp-render-listbox {
+  width: 100%; height: 100%; background: #fff; border: 1px solid #c8c8c8;
+  border-radius: 4px; padding: 2px; overflow-y: auto; pointer-events: none;
+}
+.listbox-item { padding: 3px 8px; font-size: 12px; color: #333; }
+.listbox-item.active { background: var(--primary); color: #fff; border-radius: 2px; }
+.comp-render-image {
+  width: 100%; height: 100%; background: #ececec; border: 1px solid #c8c8c8;
+  border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  color: var(--stone); font-size: 11px; flex-direction: column; gap: 4px;
+}
+.comp-render-image::before {
+  content: ''; width: 40px; height: 30px; background: #ddd; border-radius: 4px;
+  border: 1px solid #c8c8c8; display: block;
+}
+
+/* ===== Right Panel ===== */
+.panel-right {
+  width: var(--panel-width-right); min-width: var(--panel-width-right);
+  background: var(--canvas-light); border-left: 1px solid var(--hairline-light);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.props-content { flex: 1; overflow-y: auto; padding: 14px 16px; }
+.props-empty {
+  display: flex; align-items: center; justify-content: center; height: 100%;
+  color: var(--stone); font-size: 13px; text-align: center; padding: 24px;
+  line-height: 1.7;
+}
+.prop-group { margin-bottom: 18px; }
+.prop-group-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--mute);
+  letter-spacing: 0.8px; margin-bottom: 10px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--hairline-light);
+}
+.prop-row { display: flex; align-items: center; margin-bottom: 10px; gap: 10px; }
+.prop-label { width: 68px; flex-shrink: 0; font-size: 13px; color: var(--charcoal); font-weight: 500; }
+.prop-value { flex: 1; }
+.prop-value input, .prop-value textarea, .prop-value select { width: 100%; }
+.prop-value textarea { min-height: 64px; resize: vertical; font-size: 13px; }
+.prop-full { width: 100%; }
+.btn-delete-comp {
+  width: 100%; padding: 9px; border-radius: var(--r-full); border: 1px solid var(--accent-danger);
+  background: transparent; color: var(--accent-danger); cursor: pointer; font-weight: 600;
+  font-size: 13px; transition: all 0.15s; margin-top: 10px;
+}
+.btn-delete-comp:hover { background: var(--accent-danger); color: #fff; }
+
+/* ===== Status Bar ===== */
+.statusbar {
+  height: 28px; background: var(--canvas-light); border-top: 1px solid var(--hairline-light);
+  display: flex; align-items: center; padding: 0 16px; font-size: 12px;
+  color: var(--stone); gap: 16px;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <span class="toolbar-title">EXE UI Layout Editor</span>
+    <button class="toolbar-btn primary" onclick="exportLayout()" title="Export layout as HTML file">
+      &#128190; Save Layout
+    </button>
+    <button class="toolbar-btn" onclick="exportJSON()" title="Export layout as JSON for AI agent">
+      &#123;&#125; Export JSON
+    </button>
+    <div class="toolbar-spacer"></div>
+    <button class="toolbar-btn" onclick="loadJSON()" title="Import layout from JSON">
+      &#128194; Import JSON
+    </button>
+    <button class="toolbar-btn danger" onclick="clearCanvas()" title="Clear all components">
+      &#128465; Clear
+    </button>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Left Panel -->
+    <div class="panel-left">
+      <div class="panel-section-title">Components</div>
+      <div class="component-list" id="componentList"></div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="canvas-area" id="canvasArea">
+      <div class="sim-window" id="simWindow">
+        <div class="sim-titlebar" id="simTitlebar">
+          <div class="sim-titlebar-icon"></div>
+          <span class="sim-titlebar-text" id="simTitleText">Window</span>
+          <div class="sim-titlebar-btns">
+            <span class="sim-titlebar-btn minimize"></span>
+            <span class="sim-titlebar-btn maximize"></span>
+            <span class="sim-titlebar-btn close"></span>
+          </div>
+        </div>
+        <div class="sim-window-body" id="simBody"></div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="panel-right">
+      <div class="panel-section-title">Properties</div>
+      <div class="props-content" id="propsContent">
+        <div class="props-empty">Click a component on the canvas<br>to edit its properties</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="statusbar">
+    <span id="statusInfo">Ready</span>
+    <span id="statusCount">Components: 0</span>
+    <span style="flex:1"></span>
+    <span id="statusZoom" style="cursor:pointer;font-weight:500;" onclick="resetZoom()" title="Click to reset zoom to 100%">100%</span>
+  </div>
+</div>
+
+<!-- Hidden file input for import -->
+<input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleFileImport(event)">
+
+<script>
+/* ============================================================
+   DATA MODEL
+   ============================================================ */
+let nextId = 1;
+
+const layoutState = {
+  window: {
+    title: "Window",
+    width: 800,
+    height: 600
+  },
+  components: []
+};
+
+let selectedId = null;
+
+/* ============================================================
+   COMPONENT DEFINITIONS
+   ============================================================ */
+const COMPONENT_DEFS = {
+  Button: {
+    label: "Button",
+    iconClass: "btn-icon",
+    iconText: "Btn",
+    defaultWidth: 120,
+    defaultHeight: 36,
+    props: {
+      text: "Button"
+    },
+    propMeta: [
+      { key: "text", label: "Text", type: "text" }
+    ]
+  },
+  Label: {
+    label: "Label",
+    iconClass: "label-icon",
+    iconText: "Lbl",
+    defaultWidth: 100,
+    defaultHeight: 24,
+    props: {
+      text: "Label",
+      fontSize: 13
+    },
+    propMeta: [
+      { key: "text", label: "Text", type: "text" },
+      { key: "fontSize", label: "Font Size", type: "number", min: 8, max: 72 }
+    ]
+  },
+  Input: {
+    label: "Input",
+    iconClass: "input-icon",
+    iconText: "Inp",
+    defaultWidth: 200,
+    defaultHeight: 28,
+    props: {
+      placeholder: "Enter text..."
+    },
+    propMeta: [
+      { key: "placeholder", label: "Placeholder", type: "text" }
+    ]
+  },
+  TextArea: {
+    label: "TextArea",
+    iconClass: "textarea-icon",
+    iconText: "Txt",
+    defaultWidth: 240,
+    defaultHeight: 120,
+    props: {
+      placeholder: "Enter text...",
+      readOnly: false
+    },
+    propMeta: [
+      { key: "placeholder", label: "Placeholder", type: "text" },
+      { key: "readOnly", label: "Read Only", type: "checkbox" }
+    ]
+  },
+  Select: {
+    label: "ComboBox",
+    iconClass: "select-icon",
+    iconText: "Sel",
+    defaultWidth: 180,
+    defaultHeight: 28,
+    props: {
+      options: "Option 1, Option 2, Option 3",
+      selectedIndex: 0
+    },
+    propMeta: [
+      { key: "options", label: "Options", type: "text", help: "Comma separated" },
+      { key: "selectedIndex", label: "Selected", type: "number", min: 0 }
+    ]
+  },
+  ListBox: {
+    label: "ListBox",
+    iconClass: "listbox-icon",
+    iconText: "Lst",
+    defaultWidth: 160,
+    defaultHeight: 120,
+    props: {
+      items: "Item 1, Item 2, Item 3, Item 4, Item 5",
+      selectedIndex: 0
+    },
+    propMeta: [
+      { key: "items", label: "Items", type: "text", help: "Comma separated" },
+      { key: "selectedIndex", label: "Selected", type: "number", min: 0 }
+    ]
+  },
+  Image: {
+    label: "Image",
+    iconClass: "image-icon",
+    iconText: "Img",
+    defaultWidth: 120,
+    defaultHeight: 120,
+    props: {
+      alt: "Image placeholder"
+    },
+    propMeta: [
+      { key: "alt", label: "Alt Text", type: "text" }
+    ]
+  }
+};
+
+/* ============================================================
+   INIT COMPONENT PALETTE
+   ============================================================ */
+function initPalette() {
+  const list = document.getElementById('componentList');
+  list.innerHTML = '';
+  for (const [type, def] of Object.entries(COMPONENT_DEFS)) {
+    const item = document.createElement('div');
+    item.className = 'component-item';
+    item.draggable = true;
+    item.dataset.type = type;
+    item.innerHTML = `
+      <div class="comp-icon ${def.iconClass}">${def.iconText}</div>
+      <span class="comp-name">${def.label}</span>
+    `;
+    item.addEventListener('dragstart', onPaletteDragStart);
+    item.addEventListener('dragend', onPaletteDragEnd);
+    list.appendChild(item);
+  }
+}
+
+/* ============================================================
+   DRAG & DROP: Palette -> Canvas
+   ============================================================ */
+let draggedType = null;
+
+function onPaletteDragStart(e) {
+  draggedType = e.currentTarget.dataset.type;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'copy';
+  e.dataTransfer.setData('text/plain', draggedType);
+}
+
+function onPaletteDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  draggedType = null;
+}
+
+function initCanvasDrop() {
+  const body = document.getElementById('simBody');
+
+  body.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    body.classList.add('drag-over');
+  });
+
+  body.addEventListener('dragleave', () => {
+    body.classList.remove('drag-over');
+  });
+
+  body.addEventListener('drop', (e) => {
+    e.preventDefault();
+    body.classList.remove('drag-over');
+    const type = e.dataTransfer.getData('text/plain');
+    if (!type || !COMPONENT_DEFS[type]) return;
+
+    const rect = body.getBoundingClientRect();
+    const def = COMPONENT_DEFS[type];
+    const x = Math.max(0, Math.round((e.clientX - rect.left) / canvasZoom - def.defaultWidth / 2));
+    const y = Math.max(0, Math.round((e.clientY - rect.top) / canvasZoom - def.defaultHeight / 2));
+
+    const comp = {
+      id: 'comp_' + (nextId++),
+      type: type,
+      x: Math.min(x, layoutState.window.width - def.defaultWidth),
+      y: Math.min(y, layoutState.window.height - def.defaultHeight),
+      width: def.defaultWidth,
+      height: def.defaultHeight,
+      props: { ...def.props }
+    };
+
+    layoutState.components.push(comp);
+    selectedId = comp.id;
+    render();
+  });
+
+  // Click on empty area deselects
+  body.addEventListener('mousedown', (e) => {
+    if (e.target === body) {
+      selectedId = null;
+      renderProperties();
+      renderSelection();
+    }
+  });
+}
+
+/* ============================================================
+   RENDER: Canvas
+   ============================================================ */
+function renderWindow() {
+  const win = document.getElementById('simWindow');
+  const titleText = document.getElementById('simTitleText');
+  const body = document.getElementById('simBody');
+
+  win.style.width = layoutState.window.width + 'px';
+  win.style.height = (layoutState.window.height + 30) + 'px';
+  titleText.textContent = layoutState.window.title;
+}
+
+function renderComponents() {
+  const body = document.getElementById('simBody');
+  body.innerHTML = '';
+
+  for (const comp of layoutState.components) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'placed-comp' + (comp.id === selectedId ? ' selected' : '');
+    wrapper.dataset.id = comp.id;
+    wrapper.style.left = comp.x + 'px';
+    wrapper.style.top = comp.y + 'px';
+    wrapper.style.width = comp.width + 'px';
+    wrapper.style.height = comp.height + 'px';
+
+    const inner = createComponentVisual(comp);
+    wrapper.appendChild(inner);
+
+    // Mouse down for drag-move
+    wrapper.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      selectedId = comp.id;
+      startDragMove(e, comp);
+      renderProperties();
+      renderSelection();
+    });
+
+    body.appendChild(wrapper);
+  }
+}
+
+function createComponentVisual(comp) {
+  const el = document.createElement('div');
+
+  switch (comp.type) {
+    case 'Button':
+      el.className = 'comp-render-btn';
+      el.textContent = comp.props.text || 'Button';
+      break;
+    case 'Label':
+      el.className = 'comp-render-label';
+      el.textContent = comp.props.text || 'Label';
+      if (comp.props.fontSize) el.style.fontSize = comp.props.fontSize + 'px';
+      break;
+    case 'Input':
+      el.className = 'comp-render-input';
+      el.textContent = comp.props.placeholder || '';
+      el.style.color = '#999';
+      break;
+    case 'TextArea': {
+      el.className = 'comp-render-textarea';
+      el.textContent = comp.props.placeholder || '';
+      el.style.color = '#999';
+      if (comp.props.readOnly) {
+        el.style.background = '#f5f5f5';
+        el.style.color = '#666';
+      }
+      break;
+    }
+    case 'Select': {
+      el.className = 'comp-render-select';
+      const opts = (comp.props.options || '').split(',').map(s => s.trim()).filter(Boolean);
+      el.textContent = opts[comp.props.selectedIndex || 0] || opts[0] || 'Select...';
+      break;
+    }
+    case 'ListBox': {
+      el.className = 'comp-render-listbox';
+      const items = (comp.props.items || '').split(',').map(s => s.trim()).filter(Boolean);
+      items.forEach((item, i) => {
+        const div = document.createElement('div');
+        div.className = 'listbox-item' + (i === (comp.props.selectedIndex || 0) ? ' active' : '');
+        div.textContent = item;
+        el.appendChild(div);
+      });
+      break;
+    }
+    case 'Image':
+      el.className = 'comp-render-image';
+      el.textContent = comp.props.alt || 'Image';
+      break;
+  }
+
+  return el;
+}
+
+function renderSelection() {
+  const body = document.getElementById('simBody');
+  const all = body.querySelectorAll('.placed-comp');
+  all.forEach(el => {
+    if (el.dataset.id === selectedId) {
+      el.classList.add('selected');
+    } else {
+      el.classList.remove('selected');
+    }
+  });
+}
+
+/* ============================================================
+   RENDER: Properties Panel
+   ============================================================ */
+function renderProperties() {
+  const panel = document.getElementById('propsContent');
+
+  if (!selectedId) {
+    renderWindowProperties(panel);
+    return;
+  }
+
+  const comp = layoutState.components.find(c => c.id === selectedId);
+  if (!comp) {
+    renderWindowProperties(panel);
+    return;
+  }
+
+  const def = COMPONENT_DEFS[comp.type];
+  let html = '';
+
+  // Component info
+  html += `<div class="prop-group">`;
+  html += `<div class="prop-group-title">Component: ${def.label}</div>`;
+  html += `<div class="prop-row"><span class="prop-label">ID</span><div class="prop-value"><input type="text" value="${comp.id}" readonly style="color:var(--stone);"></div></div>`;
+  html += `</div>`;
+
+  // Position & Size
+  html += `<div class="prop-group">`;
+  html += `<div class="prop-group-title">Position & Size</div>`;
+  html += `<div class="prop-row"><span class="prop-label">X</span><div class="prop-value"><input type="number" value="${comp.x}" data-prop="x" data-kind="pos" min="0"></div></div>`;
+  html += `<div class="prop-row"><span class="prop-label">Y</span><div class="prop-value"><input type="number" value="${comp.y}" data-prop="y" data-kind="pos" min="0"></div></div>`;
+  html += `<div class="prop-row"><span class="prop-label">Width</span><div class="prop-value"><input type="number" value="${comp.width}" data-prop="width" data-kind="pos" min="20"></div></div>`;
+  html += `<div class="prop-row"><span class="prop-label">Height</span><div class="prop-value"><input type="number" value="${comp.height}" data-prop="height" data-kind="pos" min="12"></div></div>`;
+  html += `</div>`;
+
+  // Component-specific props
+  if (def.propMeta && def.propMeta.length > 0) {
+    html += `<div class="prop-group">`;
+    html += `<div class="prop-group-title">Properties</div>`;
+    for (const meta of def.propMeta) {
+      const val = comp.props[meta.key] !== undefined ? comp.props[meta.key] : '';
+      if (meta.type === 'checkbox') {
+        html += `<div class="prop-row"><span class="prop-label">${meta.label}</span><div class="prop-value"><input type="checkbox" ${val ? 'checked' : ''} data-prop="${meta.key}" data-kind="prop" data-type="checkbox"></div></div>`;
+      } else if (meta.type === 'number') {
+        html += `<div class="prop-row"><span class="prop-label">${meta.label}</span><div class="prop-value"><input type="number" value="${val}" data-prop="${meta.key}" data-kind="prop" ${meta.min !== undefined ? 'min="' + meta.min + '"' : ''} ${meta.max !== undefined ? 'max="' + meta.max + '"' : ''}></div></div>`;
+      } else {
+        if (meta.key === 'options' || meta.key === 'items') {
+          html += `<div style="margin-bottom:10px;"><span class="prop-label" style="display:block;width:auto;margin-bottom:4px;">${meta.label}${meta.help ? ' (' + meta.help + ')' : ''}</span><textarea data-prop="${meta.key}" data-kind="prop" style="width:100%;">${val}</textarea></div>`;
+        } else {
+          html += `<div class="prop-row"><span class="prop-label">${meta.label}</span><div class="prop-value"><input type="text" value="${escapeAttr(val)}" data-prop="${meta.key}" data-kind="prop"></div></div>`;
+        }
+      }
+    }
+    html += `</div>`;
+  }
+
+  // Delete
+  html += `<button class="btn-delete-comp" onclick="deleteComponent('${comp.id}')">Delete Component</button>`;
+
+  panel.innerHTML = html;
+  bindPropertyEvents(panel);
+}
+
+function renderWindowProperties(panel) {
+  const w = layoutState.window;
+  let html = '';
+
+  html += `<div class="prop-group">`;
+  html += `<div class="prop-group-title">Window</div>`;
+  html += `<div class="prop-row"><span class="prop-label">Title</span><div class="prop-value"><input type="text" value="${escapeAttr(w.title)}" data-prop="title" data-kind="win"></div></div>`;
+  html += `<div class="prop-row"><span class="prop-label">Width</span><div class="prop-value"><input type="number" value="${w.width}" data-prop="width" data-kind="win" min="200" max="1920"></div></div>`;
+  html += `<div class="prop-row"><span class="prop-label">Height</span><div class="prop-value"><input type="number" value="${w.height}" data-prop="height" data-kind="win" min="200" max="1200"></div></div>`;
+  html += `</div>`;
+
+  html += `<div style="color:var(--stone);font-size:13px;margin-top:16px;line-height:1.6;">`;
+  html += `Total components: ${layoutState.components.length}`;
+  html += `</div>`;
+
+  panel.innerHTML = html;
+  bindPropertyEvents(panel);
+}
+
+function bindPropertyEvents(panel) {
+  const inputs = panel.querySelectorAll('input, textarea');
+  inputs.forEach(input => {
+    const event = input.type === 'checkbox' ? 'change' : 'input';
+    input.addEventListener(event, (e) => {
+      const prop = e.target.dataset.prop;
+      const kind = e.target.dataset.kind;
+      if (!prop || !kind) return;
+
+      if (kind === 'win') {
+        if (e.target.type === 'number') {
+          layoutState.window[prop] = parseInt(e.target.value) || layoutState.window[prop];
+        } else {
+          layoutState.window[prop] = e.target.value;
+        }
+        renderWindow();
+      } else if (kind === 'pos') {
+        const comp = layoutState.components.find(c => c.id === selectedId);
+        if (!comp) return;
+        comp[prop] = parseInt(e.target.value) || 0;
+        renderComponents();
+      } else if (kind === 'prop') {
+        const comp = layoutState.components.find(c => c.id === selectedId);
+        if (!comp) return;
+        if (e.target.type === 'checkbox') {
+          comp.props[prop] = e.target.checked;
+        } else if (e.target.type === 'number') {
+          comp.props[prop] = parseInt(e.target.value) || 0;
+        } else {
+          comp.props[prop] = e.target.value;
+        }
+        renderComponents();
+      }
+    });
+  });
+}
+
+/* ============================================================
+   DRAG MOVE: Components inside Canvas
+   ============================================================ */
+let dragMoveState = null;
+
+function startDragMove(e, comp) {
+  const body = document.getElementById('simBody');
+  const bodyRect = body.getBoundingClientRect();
+
+  dragMoveState = {
+    comp: comp,
+    // Record the logical-space offset (screen pixel / zoom = logical pixel)
+    offsetX: (e.clientX - bodyRect.left) / canvasZoom - comp.x,
+    offsetY: (e.clientY - bodyRect.top) / canvasZoom - comp.y,
+    bodyRect: bodyRect
+  };
+
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragMoveEnd);
+}
+
+function onDragMove(e) {
+  if (!dragMoveState) return;
+  const s = dragMoveState;
+  const comp = s.comp;
+
+  let newX = (e.clientX - s.bodyRect.left) / canvasZoom - s.offsetX;
+  let newY = (e.clientY - s.bodyRect.top) / canvasZoom - s.offsetY;
+
+  newX = Math.max(0, Math.min(newX, layoutState.window.width - comp.width));
+  newY = Math.max(0, Math.min(newY, layoutState.window.height - comp.height));
+
+  comp.x = Math.round(newX);
+  comp.y = Math.round(newY);
+
+  // Direct DOM update for smooth dragging
+  const el = document.querySelector(`.placed-comp[data-id="${comp.id}"]`);
+  if (el) {
+    el.style.left = comp.x + 'px';
+    el.style.top = comp.y + 'px';
+  }
+}
+
+function onDragMoveEnd() {
+  if (dragMoveState && selectedId) {
+    renderProperties();
+  }
+  dragMoveState = null;
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup', onDragMoveEnd);
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+function deleteComponent(id) {
+  layoutState.components = layoutState.components.filter(c => c.id !== id);
+  if (selectedId === id) selectedId = null;
+  render();
+}
+
+function clearCanvas() {
+  if (layoutState.components.length > 0 && !confirm('Clear all components from the canvas?')) return;
+  layoutState.components = [];
+  selectedId = null;
+  nextId = 1;
+  render();
+}
+
+/* ============================================================
+   EXPORT: HTML
+   ============================================================ */
+function exportLayout() {
+  const w = layoutState.window;
+  let html = '';
+  html += '<!DOCTYPE html>\n';
+  html += '<!--\n';
+  html += '  EXE UI Layout - Generated by EXE UI Layout Editor\n';
+  html += `  Window: ${w.width}x${w.height}, Title: ${w.title}\n`;
+  html += `  Components: ${layoutState.components.length}\n`;
+  html += `  Generated: ${new Date().toISOString()}\n`;
+  html += '-->\n';
+  html += '<html lang="zh-CN">\n<head>\n';
+  html += '<meta charset="UTF-8">\n';
+  html += `<title>${escapeHTML(w.title)} - Layout</title>\n`;
+  html += '<style>\n';
+  html += '  * { box-sizing: border-box; margin: 0; padding: 0; }\n';
+  html += '  body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; font-family: "Segoe UI", sans-serif; }\n';
+  html += '  .exe-window { position: relative; border: 2px solid #555; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.3); background: #fff; }\n';
+  html += '  .exe-titlebar { height: 30px; background: #313244; display: flex; align-items: center; padding: 0 10px; }\n';
+  html += '  .exe-titlebar-text { color: #cdd6f4; font-size: 12px; flex: 1; }\n';
+  html += '  .exe-body { position: relative; width: 100%; background: #f0f0f0; overflow: hidden; }\n';
+  html += '  .exe-comp { position: absolute; }\n';
+  html += '  .exe-btn { background: linear-gradient(180deg,#f5f5f5,#d8d8d8); border: 1px solid #aaa; border-radius: 3px; text-align: center; line-height: 1; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }\n';
+  html += '  .exe-label { display: flex; align-items: center; }\n';
+  html += '  .exe-input { background: #fff; border: 1px solid #aaa; border-radius: 2px; padding: 2px 6px; font-size: 12px; color: #333; }\n';
+  html += '  .exe-textarea { background: #fff; border: 1px solid #aaa; border-radius: 2px; padding: 4px 6px; font-size: 12px; color: #333; resize: none; }\n';
+  html += '  .exe-select { background: #fff; border: 1px solid #aaa; border-radius: 2px; padding: 2px 6px; font-size: 12px; color: #333; }\n';
+  html += '  .exe-listbox { background: #fff; border: 1px solid #aaa; border-radius: 2px; overflow-y: auto; padding: 2px; }\n';
+  html += '  .exe-listbox-item { padding: 2px 6px; font-size: 12px; color: #333; }\n';
+  html += '  .exe-listbox-item.active { background: #0078d7; color: #fff; }\n';
+  html += '  .exe-image { background: #e8e8e8; border: 1px solid #bbb; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 11px; }\n';
+  html += '</style>\n</head>\n<body>\n\n';
+
+  html += `<!-- Window: title="${escapeAttr(w.title)}" width="${w.width}" height="${w.height}" -->\n`;
+  html += `<div class="exe-window" style="width:${w.width}px;">\n`;
+  html += `  <div class="exe-titlebar"><span class="exe-titlebar-text">${escapeHTML(w.title)}</span></div>\n`;
+  html += `  <div class="exe-body" style="height:${w.height}px;">\n`;
+
+  for (const comp of layoutState.components) {
+    html += `\n    <!-- Component: ${comp.type} | id="${comp.id}" | position=(${comp.x}, ${comp.y}) | size=${comp.width}x${comp.height} -->\n`;
+    html += `    <div class="exe-comp" data-type="${comp.type}" data-x="${comp.x}" data-y="${comp.y}" data-width="${comp.width}" data-height="${comp.height}"`;
+    // Add extra data attributes for props
+    for (const [pk, pv] of Object.entries(comp.props)) {
+      html += ` data-${pk}="${escapeAttr(String(pv))}"`;
+    }
+    html += ` style="left:${comp.x}px; top:${comp.y}px; width:${comp.width}px; height:${comp.height}px;">\n`;
+
+    switch (comp.type) {
+      case 'Button':
+        html += `      <div class="exe-btn" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">${escapeHTML(comp.props.text)}</div>\n`;
+        break;
+      case 'Label':
+        html += `      <div class="exe-label" style="width:100%;height:100%;font-size:${comp.props.fontSize || 13}px;">${escapeHTML(comp.props.text)}</div>\n`;
+        break;
+      case 'Input':
+        html += `      <input class="exe-input" style="width:100%;height:100%;" placeholder="${escapeAttr(comp.props.placeholder)}" readonly>\n`;
+        break;
+      case 'TextArea':
+        html += `      <textarea class="exe-textarea" style="width:100%;height:100%;" placeholder="${escapeAttr(comp.props.placeholder)}"${comp.props.readOnly ? ' readonly' : ''}></textarea>\n`;
+        break;
+      case 'Select': {
+        const opts = (comp.props.options || '').split(',').map(s => s.trim()).filter(Boolean);
+        html += `      <select class="exe-select" style="width:100%;height:100%;">\n`;
+        opts.forEach((o, i) => {
+          html += `        <option${i === (comp.props.selectedIndex || 0) ? ' selected' : ''}>${escapeHTML(o)}</option>\n`;
+        });
+        html += `      </select>\n`;
+        break;
+      }
+      case 'ListBox': {
+        const items = (comp.props.items || '').split(',').map(s => s.trim()).filter(Boolean);
+        html += `      <div class="exe-listbox" style="width:100%;height:100%;">\n`;
+        items.forEach((item, i) => {
+          html += `        <div class="exe-listbox-item${i === (comp.props.selectedIndex || 0) ? ' active' : ''}">${escapeHTML(item)}</div>\n`;
+        });
+        html += `      </div>\n`;
+        break;
+      }
+      case 'Image':
+        html += `      <div class="exe-image" style="width:100%;height:100%;">${escapeHTML(comp.props.alt || 'Image')}</div>\n`;
+        break;
+    }
+
+    html += `    </div>\n`;
+  }
+
+  html += `\n  </div>\n</div>\n\n</body>\n</html>`;
+
+  downloadFile(html, `${w.title.replace(/\s+/g, '_')}_layout.html`, 'text/html');
+  updateStatus('Layout exported as HTML');
+}
+
+/* ============================================================
+   EXPORT / IMPORT: JSON (for AI agent)
+   ============================================================ */
+function exportJSON() {
+  const data = JSON.stringify(layoutState, null, 2);
+  downloadFile(data, `${layoutState.window.title.replace(/\s+/g, '_')}_layout.json`, 'application/json');
+  updateStatus('Layout exported as JSON');
+}
+
+function loadJSON() {
+  document.getElementById('fileInput').click();
+}
+
+function handleFileImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.window && Array.isArray(data.components)) {
+        layoutState.window = { ...layoutState.window, ...data.window };
+        layoutState.components = data.components || [];
+        selectedId = null;
+        // Recalculate nextId
+        const maxId = layoutState.components.reduce((max, c) => {
+          const num = parseInt((c.id || '').replace('comp_', '')) || 0;
+          return num > max ? num : max;
+        }, 0);
+        nextId = maxId + 1;
+        render();
+        updateStatus('Layout imported from JSON');
+      } else {
+        alert('Invalid layout JSON format.');
+      }
+    } catch (err) {
+      alert('Failed to parse JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+/* ============================================================
+   UTILITY
+   ============================================================ */
+function escapeHTML(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function escapeAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function downloadFile(content, filename, mime) {
+  const blob = new Blob([content], { type: mime + ';charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+
+function updateStatus(msg) {
+  document.getElementById('statusInfo').textContent = msg || 'Ready';
+}
+
+function updateStatusCount() {
+  document.getElementById('statusCount').textContent = 'Components: ' + layoutState.components.length;
+}
+
+/* ============================================================
+   MAIN RENDER
+   ============================================================ */
+function render() {
+  renderWindow();
+  renderComponents();
+  renderProperties();
+  updateStatusCount();
+}
+
+/* ============================================================
+   KEYBOARD SHORTCUTS
+   ============================================================ */
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (selectedId) {
+      deleteComponent(selectedId);
+      updateStatus('Component deleted');
+    }
+  }
+  if (e.key === 'Escape') {
+    selectedId = null;
+    renderProperties();
+    renderSelection();
+  }
+});
+
+/* ============================================================
+   ZOOM
+   ============================================================ */
+let canvasZoom = 1;
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 3;
+const ZOOM_STEP = 0.1;
+
+function initCanvasZoom() {
+  const area = document.getElementById('canvasArea');
+
+  area.addEventListener('wheel', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+
+      const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+      const prevZoom = canvasZoom;
+      canvasZoom = Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, canvasZoom + delta)) * 100) / 100;
+
+      if (canvasZoom === prevZoom) return;
+
+      applyZoom();
+
+      // Scroll towards cursor position
+      const rect = area.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const ratio = canvasZoom / prevZoom;
+      area.scrollLeft = Math.round(mx * ratio + area.scrollLeft * ratio - mx);
+      area.scrollTop = Math.round(my * ratio + area.scrollTop * ratio - my);
+    }
+  }, { passive: false });
+}
+
+function applyZoom() {
+  const win = document.getElementById('simWindow');
+  win.style.transform = `scale(${canvasZoom})`;
+  win.style.transformOrigin = 'center center';
+  // Keep layout flow correct at different zoom levels
+  win.style.margin = `${(canvasZoom - 1) * 100}px`;
+  updateZoomLabel();
+}
+
+function resetZoom() {
+  canvasZoom = 1;
+  applyZoom();
+}
+
+function updateZoomLabel() {
+  const el = document.getElementById('statusZoom');
+  if (el) el.textContent = Math.round(canvasZoom * 100) + '%';
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+initPalette();
+initCanvasDrop();
+initCanvasZoom();
+render();
+updateStatus('Ready - Drag components from the left panel to the canvas');
+</script>
+
+</body>
+</html>
